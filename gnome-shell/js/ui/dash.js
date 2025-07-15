@@ -250,6 +250,11 @@ class ShowAppsIcon extends DashItemContainer {
             this.setLabelText(_('Show Apps'));
     }
 
+        _allocateSearchEntry() {
+        // Set the width of the search entry to 80% of the dash width
+        this._searchEntryBin.width = this._box.width * 0.8;
+    }
+
     handleDragOver(source, _actor, _x, _y, _time) {
         if (!this._canRemoveApp(Dash.getAppFromSource(source)))
             return DND.DragMotionResult.NO_DROP;
@@ -304,7 +309,7 @@ class DashIconsLayout extends Clutter.BoxLayout {
     }
 });
 
-const baseIconSizes = [16, 22, 24, 32, 48, 64];
+const baseIconSizes = [24, 32, 48, 64, 72, 96];
 
 export const Dash = GObject.registerClass({
     Signals: {'icon-size-changed': {}},
