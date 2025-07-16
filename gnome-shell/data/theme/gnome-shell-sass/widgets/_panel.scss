@@ -11,11 +11,15 @@ $panel_height: 2.2em;
 $panel_transition_duration: 250ms; // same as the overview transition duration
 
 #panel {
-  background-color: $panel_bg_color;
+  background-color: #FFFFFF25; /* Semi-transparent dark background */
+  border-radius: 12px; /* Rounded corners */
+  margin: 16px; /* Margin to create floating effect */
+  &:overview {
+    background-color: transparent; /* Keep transparent in overview */
   font-weight: bold;
   height: $panel_height;
   @extend %numeric;
-  transition-duration: $panel_transition_duration;
+  transition: background-color 250ms ease, border-radius 250ms ease, margin 250ms ease;
 
   @if $variant == 'light' {
     // uses half a pixel to compensate for box-shadow weirdness
@@ -181,5 +185,6 @@ $panel_transition_duration: 250ms; // same as the overview transition duration
   .clock {
     padding-left: $scaled_padding * 2;
     padding-right: $scaled_padding * 2;
+    }
   }
-}
+};

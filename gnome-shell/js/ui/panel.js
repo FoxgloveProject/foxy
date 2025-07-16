@@ -633,7 +633,6 @@ class QuickSettings extends PanelMenu.Button {
 });
 
 const PANEL_ITEM_IMPLEMENTATIONS = {
-    'activities': ActivitiesButton,
     'appMenu': AppMenuButton,
     'quickSettings': QuickSettings,
     'dateMenu': DateMenuButton,
@@ -909,7 +908,7 @@ class Panel extends St.Widget {
     _updateBox(elements, box) {
         let nChildren = box.get_n_children();
 
-        for (let i = 0; i < elements.length; i++) {
+         for (let i = 0; i < elements.length; i++) {
             let role = elements[i];
             let indicator = this._ensureIndicator(role);
             if (indicator == null)
