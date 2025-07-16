@@ -201,7 +201,7 @@ class ShowAppsIcon extends DashItemContainer {
             toggle_mode: true,
         });
         this._iconActor = null;
-        this.icon = new IconGrid.BaseIcon(_('Show Apps'), {
+        this.icon = new IconGrid.BaseIcon(_('Applications'), {
             setSizeManually: true,
             showLabel: false,
             createIcon: this._createIcon.bind(this),
@@ -217,7 +217,7 @@ class ShowAppsIcon extends DashItemContainer {
 
     _createIcon(size) {
         this._iconActor = new St.Icon({
-            icon_name: 'view-app-grid-symbolic',
+            icon_name: 'gnome',
             icon_size: size,
             style_class: 'show-apps-icon',
             track_hover: true,
@@ -247,7 +247,7 @@ class ShowAppsIcon extends DashItemContainer {
         if (canRemove)
             this.setLabelText(_('Unpin'));
         else
-            this.setLabelText(_('Show Apps'));
+            this.setLabelText(_('Applications'));
     }
 
 
@@ -420,6 +420,15 @@ export const Dash = GObject.registerClass({
         // Translators: this is the name of the dock/favorites area on
         // the bottom of the overview
         Main.ctrlAltTabManager.addGroup(this, _('Dash'), 'shell-focus-dash-symbolic');
+
+       // Create a panel to contain the search entry
+       this._searchPanel = new St.BoxLayout({
+        style_class: 'dash-search-panel',
+        x_expand: true,
+        y_expand: false,
+        x_align: Clutter.ActorAlign.FILL,
+        y_align: Clutter.ActorAlign.START,
+    });
 
         // Create and add the search entry
         this._searchEntryBin = new St.Bin({ x_expand: true });

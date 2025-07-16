@@ -106,3 +106,10 @@ $dash_spacing: $base_margin * 0.5;
   @extend %tooltip;
   -y-offset: $base_margin * 2; // distance from the dash edge
 }
+
+// Style for the search panel
+.dash-search-panel {
+    background-color: #FFFFFF50;
+    padding: 5px;
+    border-radius: 5px;
+}

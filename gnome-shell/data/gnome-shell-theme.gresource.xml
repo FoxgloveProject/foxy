@@ -9,5 +9,6 @@
     <file>gnome-shell-start.svg</file>
     <file>pad-osd.css</file>
     <file>workspace-placeholder.svg</file>
+    <file>icons/scalable/actions/gnome.svg</file>
   </gresource>
 </gresources>
