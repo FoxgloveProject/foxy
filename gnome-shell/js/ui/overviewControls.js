@@ -36,15 +36,14 @@ export const ControlsState = {
 
 const ControlsManagerLayout = GObject.registerClass(
 class ControlsManagerLayout extends Clutter.LayoutManager {
-    _init(searchEntry, appDisplay, workspacesDisplay, workspacesThumbnails,
-        searchController, dash, stateAdjustment) {
+    _init(appDisplay, workspacesDisplay, workspacesThumbnails,
+          searchController, dash, stateAdjustment) {
         super._init();
 
         this._appDisplay = appDisplay;
         this._workspacesDisplay = workspacesDisplay;
         this._workspacesThumbnails = workspacesThumbnails;
         this._stateAdjustment = stateAdjustment;
-        this._searchEntry = searchEntry;
         this._searchController = searchController;
         this._dash = dash;
 
@@ -159,14 +158,6 @@ class ControlsManagerLayout extends Clutter.LayoutManager {
         const spacing = Math.round(height * VERTICAL_SPACING_RATIO);
         let availableHeight = height;
 
-        // Search entry
-        let [searchHeight] = this._searchEntry.get_preferred_height(width);
-        childBox.set_origin(0, startY);
-        childBox.set_size(width, searchHeight);
-        this._searchEntry.allocate(childBox);
-
-        availableHeight -= searchHeight + spacing;
-
         // Dash
         const maxDashHeight = Math.round(box.get_height() * DASH_MAX_HEIGHT_RATIO);
         this._dash.setMaxSize(width, maxDashHeight);
@@ -176,6 +167,13 @@ class ControlsManagerLayout extends Clutter.LayoutManager {
         childBox.set_origin(0, startY + height - dashHeight);
         childBox.set_size(width, dashHeight);
         this._dash.allocate(childBox);
+
+        availableHeight -= dashHeight + spacing;
+
+        // Search entry
+        let [searchHeight] = this._dash.searchEntry.get_preferred_height(width);
+
+        availableHeight -= searchHeight + spacing;
 
         availableHeight -= dashHeight + spacing;
 
@@ -319,22 +317,6 @@ class ControlsManager extends St.Widget {
 
         this._ignoreShowAppsButtonToggle = false;
 
-        this._searchEntry = new St.Entry({
-            style_class: 'search-entry',
-            /* Translators: this is the text displayed
-               in the search entry when no search is
-               active; it should not exceed ~30
-               characters. */
-            hint_text: _('Type to search'),
-            track_hover: true,
-            can_focus: true,
-        });
-        this._searchEntry.set_offscreen_redirect(Clutter.OffscreenRedirect.ALWAYS);
-        this._searchEntryBin = new St.Bin({
-            child: this._searchEntry,
-            x_align: Clutter.ActorAlign.CENTER,
-        });
-
         this.dash = new Dash.Dash();
 
         this._workspaceAdjustment = Main.createWorkspacesAdjustment(this);
@@ -343,7 +325,7 @@ class ControlsManager extends St.Widget {
         this._stateAdjustment.connect('notify::value', this._update.bind(this));
 
         this._searchController = new SearchController.SearchController(
-            this._searchEntry,
+            this.dash.searchEntry,
             this.dash.showAppsButton);
         this._searchController.connect('notify::search-active', this._onSearchChanged.bind(this));
 
@@ -368,7 +350,6 @@ class ControlsManager extends St.Widget {
             this._stateAdjustment);
         this._appDisplay = new AppDisplay.AppDisplay();
 
-        this.add_child(this._searchEntryBin);
         this.add_child(this._appDisplay);
         this.add_child(this.dash);
         this.add_child(this._searchController);
@@ -376,7 +357,6 @@ class ControlsManager extends St.Widget {
         this.add_child(this._workspacesDisplay);
 
         this.layout_manager = new ControlsManagerLayout(
-            this._searchEntryBin,
             this._appDisplay,
             this._workspacesDisplay,
             this._thumbnailsBox,
@@ -855,7 +835,7 @@ class ControlsManager extends St.Widget {
     }
 
     get searchEntry() {
-        return this._searchEntry;
+        return this.dash.searchEntry;
     }
 
     get appDisplay() {

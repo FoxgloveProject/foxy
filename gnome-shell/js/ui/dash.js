@@ -331,7 +331,6 @@ export const Dash = GObject.registerClass({
         this.iconSize = 64;
         this._shownInitially = false;
 
-        this._separator = null;
         this._dragPlaceholder = null;
         this._dragPlaceholderPos = -1;
         this._animatingPlaceholdersCount = 0;
@@ -347,6 +346,7 @@ export const Dash = GObject.registerClass({
 
         this._dashContainer = new St.BoxLayout({
             x_align: Clutter.ActorAlign.CENTER,
+            spacing: 10,
             y_expand: true,
         });
 
@@ -357,7 +357,15 @@ export const Dash = GObject.registerClass({
         });
         this._box._delegate = this;
 
+        this._runningAppsBox = new St.Widget({
+            clip_to_allocation: true,
+            layout_manager: new DashIconsLayout(),
+            y_expand: true,
+        });
+        this._runningAppsBox._delegate = this;
+
         this._dashContainer.add_child(this._box);
+        this._dashContainer.add_child(this._runningAppsBox);
 
         this._showAppsIcon = new ShowAppsIcon();
         this._showAppsIcon.show(false);
@@ -412,6 +420,22 @@ export const Dash = GObject.registerClass({
         // Translators: this is the name of the dock/favorites area on
         // the bottom of the overview
         Main.ctrlAltTabManager.addGroup(this, _('Dash'), 'shell-focus-dash-symbolic');
+
+        // Create and add the search entry
+        this._searchEntryBin = new St.Bin({ x_expand: true });
+        this._searchEntry = new St.Entry({
+            style_class: 'dash-search-entry',
+            can_focus: true,
+            hint_text: _('Type to Launch Programs, Files, Apps and more...'),
+        });
+        this._searchEntryBin.child = this._searchEntry;
+        // Add the search entry bin to the dash container, above the icons
+        this._dashContainer.insert_child_at_index(this._searchEntryBin, 0);
+    }
+
+    // Expose the search entry via a getter
+    get searchEntry() {
+        return this._searchEntry;
     }
 
     _onItemDragBegin() {
@@ -589,14 +613,21 @@ export const Dash = GObject.registerClass({
         // For the icon size, we only consider children which are "proper"
         // icons (i.e. ignoring drag placeholders) and which are not
         // animating out (which means they will be destroyed at the end of
-        // the animation)
-        let iconChildren = this._box.get_children().filter(actor => {
+        // the animation).
+        let favIconChildren = this._box.get_children().filter(actor => {
+            return actor.child &&
+                   actor.child._delegate &&
+                   actor.child._delegate.icon &&
+                   !actor.animatingOut;
+        });
+        let runningIconChildren = this._runningAppsBox.get_children().filter(actor => {
             return actor.child &&
                    actor.child._delegate &&
                    actor.child._delegate.icon &&
                    !actor.animatingOut;
         });
 
+        let iconChildren = favIconChildren.concat(runningIconChildren);
         iconChildren.push(this._showAppsIcon);
 
         if (this._maxWidth === -1 || this._maxHeight === -1)
@@ -679,19 +710,10 @@ export const Dash = GObject.registerClass({
                 mode: Clutter.AnimationMode.EASE_OUT_QUAD,
             });
         }
-
-        if (this._separator) {
-            this._separator.ease({
-                height: this.iconSize,
-                duration: DASH_ANIMATION_TIME,
-                mode: Clutter.AnimationMode.EASE_OUT_QUAD,
-            });
-        }
     }
 
     _redisplay() {
         let favorites = AppFavorites.getAppFavorites().getFavoriteMap();
-
         let running = this._appSystem.get_running();
 
         let children = this._box.get_children().filter(actor => {
@@ -701,43 +723,21 @@ export const Dash = GObject.registerClass({
         });
         // Apps currently in the dash
         let oldApps = children.map(actor => actor.child._delegate.app);
-        // Apps supposed to be in the dash
-        let newApps = [];
+        // Apps supposed to be in the favorites section
+        let newFavApps = [];
 
         for (let id in favorites)
-            newApps.push(favorites[id]);
+            newFavApps.push(favorites[id]);
 
-        for (let i = 0; i < running.length; i++) {
-            let app = running[i];
-            if (app.get_id() in favorites)
-                continue;
-            newApps.push(app);
-        }
-
-        // Figure out the actual changes to the list of items; we iterate
-        // over both the list of items currently in the dash and the list
-        // of items expected there, and collect additions and removals.
-        // Moves are both an addition and a removal, where the order of
-        // the operations depends on whether we encounter the position
-        // where the item has been added first or the one from where it
-        // was removed.
-        // There is an assumption that only one item is moved at a given
-        // time; when moving several items at once, everything will still
-        // end up at the right position, but there might be additional
-        // additions/removals (e.g. it might remove all the launchers
-        // and add them back in the new order even if a smaller set of
-        // additions and removals is possible).
-        // If above assumptions turns out to be a problem, we might need
-        // to use a more sophisticated algorithm, e.g. Longest Common
-        // Subsequence as used by diff.
+        // Figure out the actual changes to the list of items
         let addedItems = [];
         let removedActors = [];
 
         let newIndex = 0;
         let oldIndex = 0;
-        while (newIndex < newApps.length || oldIndex < oldApps.length) {
+        while (newIndex < newFavApps.length || oldIndex < oldApps.length) {
             let oldApp = oldApps.length > oldIndex ? oldApps[oldIndex] : null;
-            let newApp = newApps.length > newIndex ? newApps[newIndex] : null;
+            let newApp = newFavApps.length > newIndex ? newFavApps[newIndex] : null;
 
             // No change at oldIndex/newIndex
             if (oldApp === newApp) {
@@ -747,7 +747,7 @@ export const Dash = GObject.registerClass({
             }
 
             // App removed at oldIndex
-            if (oldApp && !newApps.includes(oldApp)) {
+            if (oldApp && !newFavApps.includes(oldApp)) {
                 removedActors.push(children[oldIndex]);
                 oldIndex++;
                 continue;
@@ -765,8 +765,8 @@ export const Dash = GObject.registerClass({
             }
 
             // App moved
-            let nextApp = newApps.length > newIndex + 1
-                ? newApps[newIndex + 1] : null;
+            let nextApp = newFavApps.length > newIndex + 1
+                ? newFavApps[newIndex + 1] : null;
             let insertHere = nextApp && nextApp === oldApp;
             let alreadyRemoved = removedActors.reduce((result, actor) => {
                 let removedApp = actor.child._delegate.app;
@@ -804,44 +804,53 @@ export const Dash = GObject.registerClass({
                 item.destroy();
         }
 
+        // Update running applications
+        let runningChildren = this._runningAppsBox.get_children().filter(actor => {
+            return actor.child &&
+                   actor.child._delegate &&
+                   actor.child._delegate.app;
+        });
+        let oldRunningApps = runningChildren.map(actor => actor.child._delegate.app);
+        let newRunningApps = running.filter(app => !favorites[app.get_id()]);
+
+        let addedRunningItems = [];
+        let removedRunningActors = [];
+        this._diffRunningApps(oldRunningApps, newRunningApps, runningChildren, addedRunningItems, removedRunningActors);
+
+        for (let i = 0; i < addedRunningItems.length; i++) {
+            this._runningAppsBox.insert_child_at_index(
+                addedRunningItems[i].item,
+                addedRunningItems[i].pos);
+        }
+
+        for (let i = 0; i < removedRunningActors.length; i++) {
+            let item = removedRunningActors[i];
+            if (Main.overview.visible && !Main.overview.animationInProgress)
+                item.animateOutAndDestroy();
+            else
+                item.destroy();
+        }
+
+
         this._adjustIconSize();
 
         // Skip animations on first run when adding the initial set
         // of items, to avoid all items zooming in at once
-
         let animate = this._shownInitially && Main.overview.visible &&
             !Main.overview.animationInProgress;
+
+        for (let i = 0; i < addedItems.length; i++)
+            addedItems[i].item.show(animate);
+        for (let i = 0; i < addedRunningItems.length; i++)
+            addedRunningItems[i].item.show(animate);
 
         if (!this._shownInitially)
             this._shownInitially = true;
 
-        for (let i = 0; i < addedItems.length; i++)
-            addedItems[i].item.show(animate);
-
-        // Update separator
-        const nFavorites = Object.keys(favorites).length;
-        const nIcons = children.length + addedItems.length - removedActors.length;
-        if (nFavorites > 0 && nFavorites < nIcons) {
-            if (!this._separator) {
-                this._separator = new St.Widget({
-                    style_class: 'dash-separator',
-                    y_align: Clutter.ActorAlign.CENTER,
-                    height: this.iconSize,
-                });
-                this._box.add_child(this._separator);
-            }
-            let pos = nFavorites + this._animatingPlaceholdersCount;
-            if (this._dragPlaceholder)
-                pos++;
-            this._box.set_child_at_index(this._separator, pos);
-        } else if (this._separator) {
-            this._separator.destroy();
-            this._separator = null;
-        }
-
         // Workaround for https://bugzilla.gnome.org/show_bug.cgi?id=692744
         // Without it, StBoxLayout may use a stale size cache
         this._box.queue_relayout();
+        this._runningAppsBox.queue_relayout();
     }
 
     _clearDragPlaceholder() {
@@ -854,6 +863,45 @@ export const Dash = GObject.registerClass({
             this._dragPlaceholder = null;
         }
         this._dragPlaceholderPos = -1;
+    }
+
+    _diffRunningApps(oldApps, newApps, children, addedItems, removedActors) {
+        let newIndex = 0;
+        let oldIndex = 0;
+        while (newIndex < newApps.length || oldIndex < oldApps.length) {
+            let oldApp = oldApps.length > oldIndex ? oldApps[oldIndex] : null;
+            let newApp = newApps.length > newIndex ? newApps[newIndex] : null;
+
+            // No change at oldIndex/newIndex
+            if (oldApp === newApp) {
+                oldIndex++;
+                newIndex++;
+                continue;
+            }
+
+            // App removed at oldIndex
+            if (oldApp && !newApps.includes(oldApp)) {
+                removedActors.push(children[oldIndex]);
+                oldIndex++;
+                continue;
+            }
+
+            // App added at newIndex
+            if (newApp && !oldApps.includes(newApp)) {
+                addedItems.push({
+                    app: newApp,
+                    item: this._createAppItem(newApp),
+                    pos: newIndex,
+                });
+                newIndex++;
+                continue;
+            }
+
+            // Apps are sorted by their name, so if we are here, it must
+            // be a removal.
+            removedActors.push(children[oldIndex]);
+            oldIndex++;
+        }
     }
 
     _clearEmptyDropTarget() {
@@ -887,12 +935,6 @@ export const Dash = GObject.registerClass({
         // need to do the same adjustment there.
         if (this._dragPlaceholder) {
             boxWidth -= this._dragPlaceholder.width;
-            numChildren--;
-        }
-
-        // Same with the separator
-        if (this._separator) {
-            boxWidth -= this._separator.width;
             numChildren--;
         }
 
