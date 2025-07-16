@@ -11,6 +11,8 @@ $panel_height: 2.2em;
 $panel_transition_duration: 250ms; // same as the overview transition duration
 
 #panel {
+  box-shadow: inset 1 0.1px 2px -1px #FFFFFF25;
+  box-shadow: inset 1 0.1px -2px -1px #00000025;
   background-color: #FFFFFF25; /* Semi-transparent dark background */
   border-radius: 12px; /* Rounded corners */
   margin: 16px; /* Margin to create floating effect */

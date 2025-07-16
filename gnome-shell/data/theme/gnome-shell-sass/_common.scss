@@ -378,3 +378,40 @@ stage {
   StLabel.hint-text { color: transparentize($system_fg_color, 0.3);}
 }
 
+/* Window Decorations */
+
+// This rounds the corners of all application windows.
+.csd, .ssd {
+  // The radius should ideally match the top bar's radius.
+  // Using a variable from _common.scss for consistency.
+  border-radius: $modal_radius;
+}
+
+// Styles for "classic" window titlebars (Server-Side Decorations).
+// This will not affect modern applications that draw their own titlebars.
+.ssd .titlebar {
+  background-color: #FFFFFF25;
+  color: #FFFFFF; // A light text color for the dark titlebar.
+  text-shadow: none;
+  box-shadow: inset 1 0.1px 2px -1px #FFFFFF25;
+  box-shadow: inset 1 0.1px -2px -1px #00000025;
+  border: none;
+
+  .title-label {
+    font-weight: bold;
+  }
+
+  // Style for the min, max, close buttons
+  .button.titlebutton {
+    -st-icon-style: symbolic;
+    color: $light_1;
+    background-color: transparent;
+    border: none;
+    box-shadow: none;
+    padding: $base_padding;
+
+    &:hover {
+      background-color: #FFFFFF50;
+    }
+  }
+}
